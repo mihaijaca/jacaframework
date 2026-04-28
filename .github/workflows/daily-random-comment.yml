@@ -1,0 +1,38 @@
+name: Add Random Comment to main.py
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # Runs every day at 03:17 UTC
+  workflow_dispatch:
+
+jobs:
+  update-file:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate random comment
+        id: rand
+        run: |
+          RAND=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)
+          echo "comment=# $RAND" >> $GITHUB_OUTPUT
+
+      - name: Insert comment at top of main.py
+        run: |
+          COMMENT="${{ steps.rand.outputs.comment }}"
+          echo "$COMMENT" | cat - main.py > temp && mv temp main.py
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add main.py
+          git commit -m "Daily random comment added" || echo "No changes to commit"
+
+      - name: Push changes
+        run: |
+          git push || echo "Nothing to push"
